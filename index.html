@@ -43,6 +43,20 @@ html, body {
   box-shadow:0 2px 10px rgba(0,0,0,0.12); position:relative;
   transition: transform .3s ease, opacity .3s ease, background-color .8s ease;
 }
+.visitor.super {
+  flex:1.8; max-width:120px; min-height:110px;
+  border:2px solid #FFD700;
+  box-shadow:0 0 16px rgba(255,215,0,0.5), 0 2px 12px rgba(0,0,0,0.15);
+  background:linear-gradient(135deg, hsl(50,80%,88%), hsl(45,70%,82%));
+  z-index:2;
+}
+.visitor.super .visitor-avatar { font-size:32px; }
+.visitor.super .visitor-avatar::after {
+  content:'⭐'; position:absolute; top:-10px; right:-12px; font-size:14px;
+}
+.visitor.super .visitor-order-item { width:24px; height:24px; font-size:16px; }
+.visitor.super .visitor-coins { font-size:10px; padding:2px 6px; }
+.visitor.super .visitor-tips { font-size:10px; padding:2px 6px; }
 .visitor.leaving { transform:translateY(-30px) scale(0.7); opacity:0; }
 .visitor.entering { animation:visitorEnter .4s ease-out; }
 @keyframes visitorEnter { from{transform:translateY(-20px);opacity:0} to{transform:translateY(0);opacity:1} }
@@ -242,26 +256,25 @@ html, body {
     <div class="tut-slide" data-step="1">
       <div class="tut-icon">🧑‍🤝‍🧑</div>
       <div class="tut-title">Посетители</div>
-      <div class="tut-desc">Наверху экрана стоят посетители. У каждого есть заказ — набор предметов, которые нужно собрать.</div>
+      <div class="tut-desc">Наверху экрана стоят посетители. Каждый обычный посетитель просит 3 одинаковых предмета и платит фиксированную сумму.</div>
       <div class="tut-example">
         <span class="tut-example-val">😊</span>
         <span style="font-size:20px">→</span>
-        <span class="tut-example-val">🍔 🍟</span>
+        <span class="tut-example-val">🍔 🍔 🍔</span>
       </div>
       <div class="tut-nav"><div class="tut-dots" id="tut-dots-1"></div><button class="tut-btn" id="tut-next-1">Далее</button></div>
     </div>
 
     <div class="tut-slide" data-step="2">
-      <div class="tut-icon">💰</div>
-      <div class="tut-title">Оплата и чаевые</div>
-      <div class="tut-desc">У каждого посетителя два счётчика:</div>
+      <div class="tut-icon">⭐</div>
+      <div class="tut-title">Супер-посетитель</div>
+      <div class="tut-desc">Иногда приходит особый гость с золотой рамкой! Он просит разные предметы и оставляет огромные чаевые — но они тают от ожидания. Обслужи его быстрее!</div>
       <div class="tut-example">
         <div style="display:flex;flex-direction:column;gap:6px">
-          <div style="display:flex;align-items:center;gap:6px"><span class="gold-coin"></span><span style="color:white;font-size:13px;font-weight:600">Оплата</span><span style="color:rgba(255,255,255,0.5);font-size:12px">— фиксированная сумма</span></div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="font-size:13px">💝</span><span style="color:white;font-size:13px;font-weight:600">Чаевые</span><span style="color:rgba(255,255,255,0.5);font-size:12px">— уменьшаются от ожидания</span></div>
+          <div style="display:flex;align-items:center;gap:6px"><span class="gold-coin"></span><span style="color:white;font-size:13px;font-weight:600">Оплата</span><span style="color:rgba(255,255,255,0.5);font-size:12px">— фиксированная</span></div>
+          <div style="display:flex;align-items:center;gap:6px"><span style="font-size:13px">💝</span><span style="color:white;font-size:13px;font-weight:600">Чаевые</span><span style="color:rgba(255,255,255,0.5);font-size:12px">— тают со временем!</span></div>
         </div>
       </div>
-      <div class="tut-desc">Чем быстрее соберёшь заказ — тем больше чаевых получишь!</div>
       <div class="tut-nav"><div class="tut-dots" id="tut-dots-2"></div><button class="tut-btn" id="tut-next-2">Далее</button></div>
     </div>
 
@@ -384,21 +397,21 @@ const SHOPS = [
 const AVATARS = ['😊','😎','🤠','😺','🐸','🦊','🐵','🐰','🧔','👩','🧑','👴','👶','🤡','🥸','🤓'];
 
 const LEVELS = [
-  { totalVisitors:6, itemCount:4, orderMin:1, orderMax:1, coinsMin:2, coinsMax:3, tipsMin:2, tipsMax:3, decayMs:7000, startCoins:3, visible:3, freeSlots:6, musicMs:5000,
+  { totalVisitors:6, itemCount:4, coinsMin:2, coinsMax:3, superEvery:0, superOrderMin:2, superOrderMax:3, superTips:15, decayMs:7000, startCoins:3, visible:3, freeSlots:6, musicMs:5000,
     shelves:[{cols:2,cycling:false},{cols:2,cycling:false}] },
-  { totalVisitors:8, itemCount:5, orderMin:1, orderMax:2, coinsMin:2, coinsMax:4, tipsMin:2, tipsMax:3, decayMs:6000, startCoins:3, visible:4, freeSlots:6, musicMs:5000,
+  { totalVisitors:8, itemCount:5, coinsMin:2, coinsMax:4, superEvery:5, superOrderMin:2, superOrderMax:3, superTips:18, decayMs:6000, startCoins:3, visible:4, freeSlots:6, musicMs:5000,
     shelves:[{cols:3,cycling:false},{cols:3,cycling:false}] },
-  { totalVisitors:10, itemCount:6, orderMin:1, orderMax:2, coinsMin:3, coinsMax:4, tipsMin:2, tipsMax:4, decayMs:5500, startCoins:4, visible:4, freeSlots:6, musicMs:5000,
+  { totalVisitors:10, itemCount:6, coinsMin:3, coinsMax:4, superEvery:4, superOrderMin:2, superOrderMax:3, superTips:20, decayMs:5500, startCoins:4, visible:4, freeSlots:6, musicMs:5000,
     shelves:[{cols:3,cycling:false},{cols:4,cycling:true,speed:0.25}] },
-  { totalVisitors:12, itemCount:7, orderMin:1, orderMax:3, coinsMin:3, coinsMax:5, tipsMin:2, tipsMax:4, decayMs:5000, startCoins:4, visible:5, freeSlots:6, musicMs:5000,
+  { totalVisitors:12, itemCount:7, coinsMin:3, coinsMax:5, superEvery:4, superOrderMin:2, superOrderMax:4, superTips:22, decayMs:5000, startCoins:4, visible:5, freeSlots:6, musicMs:5000,
     shelves:[{cols:3,cycling:false},{cols:5,cycling:true,speed:0.3},{cols:3,cycling:false}] },
-  { totalVisitors:14, itemCount:8, orderMin:2, orderMax:3, coinsMin:3, coinsMax:5, tipsMin:3, tipsMax:5, decayMs:4500, startCoins:5, visible:5, freeSlots:6, musicMs:5000,
+  { totalVisitors:14, itemCount:8, coinsMin:3, coinsMax:5, superEvery:4, superOrderMin:3, superOrderMax:4, superTips:25, decayMs:4500, startCoins:5, visible:5, freeSlots:6, musicMs:5000,
     shelves:[{cols:3,cycling:false},{cols:5,cycling:true,speed:0.35},{cols:3,cycling:false}] },
-  { totalVisitors:16, itemCount:8, orderMin:2, orderMax:3, coinsMin:3, coinsMax:5, tipsMin:3, tipsMax:5, decayMs:4000, startCoins:5, visible:5, freeSlots:6, musicMs:5000,
+  { totalVisitors:16, itemCount:8, coinsMin:3, coinsMax:5, superEvery:3, superOrderMin:3, superOrderMax:4, superTips:28, decayMs:4000, startCoins:5, visible:5, freeSlots:6, musicMs:5000,
     shelves:[{cols:3,cycling:false},{cols:5,cycling:true,speed:0.4},{cols:3,cycling:false},{cols:4,cycling:true,speed:-0.25}] },
-  { totalVisitors:20, itemCount:9, orderMin:2, orderMax:4, coinsMin:4, coinsMax:6, tipsMin:3, tipsMax:5, decayMs:3500, startCoins:5, visible:5, freeSlots:6, musicMs:5000,
+  { totalVisitors:20, itemCount:9, coinsMin:4, coinsMax:6, superEvery:3, superOrderMin:3, superOrderMax:4, superTips:30, decayMs:3500, startCoins:5, visible:5, freeSlots:6, musicMs:5000,
     shelves:[{cols:3,cycling:false},{cols:6,cycling:true,speed:0.45},{cols:3,cycling:false},{cols:5,cycling:true,speed:-0.35}] },
-  { totalVisitors:25, itemCount:10, orderMin:2, orderMax:4, coinsMin:4, coinsMax:6, tipsMin:4, tipsMax:6, decayMs:3000, startCoins:6, visible:5, freeSlots:6, musicMs:5000,
+  { totalVisitors:25, itemCount:10, coinsMin:4, coinsMax:6, superEvery:3, superOrderMin:3, superOrderMax:4, superTips:35, decayMs:3000, startCoins:6, visible:5, freeSlots:6, musicMs:5000,
     shelves:[{cols:3,cycling:false},{cols:6,cycling:true,speed:0.5},{cols:3,cycling:false},{cols:5,cycling:true,speed:-0.4}] },
 ];
 
@@ -419,17 +432,41 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random
 
 function getShopItems(){return SHOPS[S.shopSelected].items}
 
-function makeVisitor(){
-  const n=rndRange(LVL.orderMin,LVL.orderMax);
-  const order=Array.from({length:n},rndItem);
+function makeVisitor(isSuper){
   const baseCoins=rndRange(LVL.coinsMin,LVL.coinsMax);
-  const tips=rndRange(LVL.tipsMin,LVL.tipsMax);
-  return{id:S.vid++,avatar:rnd(AVATARS),order,baseCoins,tips,maxTips:tips,fresh:true};
+  if(isSuper){
+    const n=rndRange(LVL.superOrderMin,LVL.superOrderMax);
+    const used=new Set();
+    const order=[];
+    for(let i=0;i<n;i++){
+      let it;
+      do{it=rndItem()}while(used.has(it.id)&&used.size<ITEMS.length);
+      used.add(it.id);
+      order.push(it);
+    }
+    const tips=LVL.superTips;
+    return{id:S.vid++,avatar:rnd(AVATARS),order,baseCoins,tips,maxTips:tips,isSuper:true,fresh:true};
+  }
+  const item=rndItem();
+  const order=[{...item},{...item},{...item}];
+  return{id:S.vid++,avatar:rnd(AVATARS),order,baseCoins,tips:0,maxTips:0,isSuper:false,fresh:true};
 }
 
 function generateLevel(){
+  const all=[];
+  for(let i=0;i<LVL.totalVisitors;i++){
+    const isSuper=LVL.superEvery>0&&(i+1)%LVL.superEvery===0;
+    all.push(makeVisitor(isSuper));
+  }
+  const supers=all.filter(v=>v.isSuper);
+  const normals=all.filter(v=>!v.isSuper);
   S.queue=[];
-  for(let i=0;i<LVL.totalVisitors;i++) S.queue.push(makeVisitor());
+  let si=0,ni=0;
+  while(si<supers.length||ni<normals.length){
+    if(si<supers.length){S.queue.push(supers[si++])}
+    const batch=Math.min(LVL.superEvery>0?LVL.superEvery-1:normals.length,normals.length-ni);
+    for(let b=0;b<batch&&ni<normals.length;b++) S.queue.push(normals[ni++]);
+  }
   const pool=[];
   for(const v of S.queue) for(const item of v.order) pool.push({...item});
   shuffle(pool);
@@ -571,10 +608,13 @@ function nextLevel(){
 let decayInterval;
 function startDecay(){
   clearInterval(decayInterval);
+  const superDecayMs=Math.max(800,Math.floor(LVL.decayMs/4));
   decayInterval=setInterval(()=>{
     if(S.over||S.musicOn||S.levelComplete)return;
-    S.visitors.forEach(v=>{v.tips=Math.max(0,v.tips-1)});renderVisitors();
-  },LVL.decayMs);
+    let changed=false;
+    S.visitors.forEach(v=>{if(v.isSuper&&v.tips>0){v.tips--;changed=true}});
+    if(changed) renderVisitors();
+  },superDecayMs);
 }
 
 function activateMusic(){
@@ -684,6 +724,7 @@ function renderHeader(){
   renderCoins();
 }
 function visitorBgColor(v){
+  if(!v.isSuper) return'hsl(120,55%,82%)';
   const pct=v.maxTips>0?v.tips/v.maxTips:0;
   return`hsl(${Math.round(pct*120)},${55+Math.round((1-pct)*20)}%,${82-Math.round((1-pct)*12)}%)`;
 }
@@ -696,11 +737,12 @@ function renderVisitors(){
   const c=document.getElementById('visitors');c.innerHTML='';
   S.visitors.forEach(v=>{
     const d=document.createElement('div');
-    d.className='visitor'+(v.fresh?' entering':'');
+    d.className='visitor'+(v.fresh?' entering':'')+(v.isSuper?' super':'');
     if(v.fresh)setTimeout(()=>{v.fresh=false},400);
     d.style.backgroundColor=visitorBgColor(v);
-    d.innerHTML=`<div class="visitor-coins"><span class="gold-coin"></span>${v.baseCoins}</div>
-      <div class="visitor-tips" style="background:${tipsBgColor(v)}">💝${v.tips}</div>
+    let badges=`<div class="visitor-coins"><span class="gold-coin"></span>${v.baseCoins}</div>`;
+    if(v.isSuper) badges+=`<div class="visitor-tips" style="background:${tipsBgColor(v)}">💝${v.tips}</div>`;
+    d.innerHTML=`${badges}
       <div class="visitor-avatar">${v.avatar}</div>
       <div class="visitor-order">${v.order.map(it=>`<div class="visitor-order-item">${it.emoji}</div>`).join('')}</div>`;
     c.appendChild(d);
@@ -789,11 +831,12 @@ function showLevelStart(){
   LVL=LEVELS[S.level];
   ITEMS=getShopItems().slice(0,LVL.itemCount);
   document.getElementById('start-level-num').textContent=S.level+1;
+  const superCount=LVL.superEvery>0?Math.floor(LVL.totalVisitors/LVL.superEvery):0;
   const desc=[
     `${LVL.totalVisitors} посетителей`,
     `${LVL.itemCount} видов предметов`,
-    LVL.orderMin===LVL.orderMax?`Заказ: ${LVL.orderMin}`:`Заказ: ${LVL.orderMin}–${LVL.orderMax}`,
-  ];
+    superCount>0?`⭐ ${superCount} супер-посетител${superCount>1?'ей':'ь'}`:'',
+  ].filter(Boolean);
   document.getElementById('start-level-desc').innerHTML=desc.join('<br>');
   document.getElementById('level-start').classList.add('active');
 }
