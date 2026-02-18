@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+<title>Cafe Orders</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #FFF8F0; --shelf-wood: #C4956A; --shelf-dark: #A67B52;
+  --accent: #FF7043; --coin: #FFD700; --text: #3E2723;
+  --text-light: #8D6E63; --danger: #EF5350; --success: #66BB6A;
+  --assembly-bg: #EFEBE9; --slot-border: #D7CCC8; --locked: #BDBDBD;
+}
+html, body {
+  width:100%; height:100%; overflow:hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg); color: var(--text);
+  touch-action: manipulation; -webkit-user-select: none; user-select: none;
+}
+#game {
+  width:100%; height:100%; max-width:430px; margin:0 auto;
+  display:flex; flex-direction:column; position:relative; overflow:hidden;
+}
+#header {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 14px; padding-top: max(10px, env(safe-area-inset-top));
+  background:linear-gradient(135deg,#5D4037,#4E342E); color:white; z-index:10; flex-shrink:0;
+}
+#level-info { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; }
+#level-badge { background:linear-gradient(135deg,#FF8A65,#FF7043); border-radius:10px; padding:2px 10px; font-size:12px; font-weight:700; }
+#served-counter { opacity:0.85; font-size:12px; }
+#coin-counter { font-size:20px; font-weight:700; display:flex; align-items:center; gap:6px; }
+.coin-big {
+  display:inline-block; width:26px; height:26px;
+  background:radial-gradient(circle at 35% 35%,#FFF176,#FFD700 40%,#F9A825 100%);
+  border-radius:50%; border:2px solid #F57F17; box-shadow:0 2px 6px rgba(249,168,37,0.5);
+}
+#visitors { display:flex; gap:4px; padding:8px 6px 6px; background:linear-gradient(180deg,#EFEBE9,var(--bg)); flex-shrink:0; justify-content:center; }
+.visitor {
+  flex:1; max-width:72px; min-height:100px; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; border-radius:14px; padding:8px 2px 10px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.12); position:relative;
+  transition: transform .3s ease, opacity .3s ease, background-color .8s ease;
+}
+.visitor.leaving { transform:translateY(-30px) scale(0.7); opacity:0; }
+.visitor.entering { animation:visitorEnter .4s ease-out; }
+@keyframes visitorEnter { from{transform:translateY(-20px);opacity:0} to{transform:translateY(0);opacity:1} }
+.visitor-avatar { font-size:26px; line-height:1; position:relative; }
+.visitor-order { display:flex; gap:1px; margin-top:3px; flex-wrap:wrap; justify-content:center; }
+.visitor-order-item { font-size:14px; background:rgba(255,255,255,0.55); border-radius:4px; width:20px; height:20px; display:flex; align-items:center; justify-content:center; }
+.visitor-coins {
+  position:absolute; top:3px; left:3px; font-size:9px; font-weight:700; color:#5D4037;
+  background:linear-gradient(135deg,#FFD700,#FFC107); border-radius:8px; padding:1px 5px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.2); display:flex; align-items:center; gap:2px; line-height:1.3;
+}
+.visitor-tips {
+  position:absolute; top:3px; right:3px; font-size:9px; font-weight:700; color:white;
+  border-radius:8px; padding:1px 5px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.2); display:flex; align-items:center; gap:2px; line-height:1.3;
+  transition:background-color 0.5s ease;
+}
+.gold-coin {
+  display:inline-block; width:12px; height:12px;
+  background:radial-gradient(circle at 35% 35%,#FFF176,#FFD700 40%,#F9A825 100%);
+  border-radius:50%; border:1px solid #F57F17; font-size:0; flex-shrink:0;
+}
+#assembly-section { padding:4px 8px 6px; flex-shrink:0; }
+#assembly-label { font-size:10px; font-weight:600; color:var(--text-light); text-transform:uppercase; letter-spacing:.5px; margin-bottom:3px; text-align:center; }
+#assembly-area { display:flex; gap:4px; justify-content:center; }
+.assembly-slot {
+  width:44px; height:44px; border-radius:10px; border:2px dashed var(--slot-border);
+  background:var(--assembly-bg); display:flex; align-items:center; justify-content:center;
+  font-size:22px; position:relative; transition:transform .2s, border-color .3s; flex-shrink:0;
+}
+.assembly-slot.has-item { border-style:solid; border-color:var(--accent); background:#FFF3E0; animation:slotPop .25s ease; }
+@keyframes slotPop { 0%{transform:scale(.8)} 60%{transform:scale(1.08)} 100%{transform:scale(1)} }
+.assembly-slot.paid { border-color:var(--locked); background:#F5F5F5; }
+.assembly-slot.paid.locked { cursor:pointer; }
+.assembly-slot .lock-icon { font-size:16px; color:var(--locked); }
+.assembly-slot .cost-badge {
+  position:absolute; bottom:-4px; right:-4px; background:linear-gradient(135deg,#FFD700,#FFC107);
+  color:#5D4037; font-size:9px; font-weight:700; border-radius:8px; padding:1px 5px;
+  border:1px solid #F9A825; display:flex; align-items:center; gap:2px;
+}
+.assembly-slot .cost-badge .gold-coin { width:8px; height:8px; }
+.assembly-slot.match-glow { border-color:var(--success); box-shadow:0 0 10px rgba(102,187,106,0.5); }
+.assembly-slot.full-warning { animation:shake .4s ease; border-color:var(--danger)!important; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+
+#shelves-section { flex:1; overflow-y:auto; overflow-x:hidden; display:flex; flex-direction:column; gap:8px; padding:6px 8px; min-height:0; -webkit-overflow-scrolling:touch; }
+.shelf-row { display:flex; gap:6px; justify-content:center; flex-shrink:0; }
+.shelf-row.cycling { overflow:hidden; justify-content:flex-start; }
+.shelf-row-inner { display:flex; gap:6px; }
+.shelf {
+  background:linear-gradient(180deg,#D4A574,var(--shelf-wood) 40%,var(--shelf-dark));
+  border-radius:10px; padding:5px 4px; display:flex; flex-direction:column; align-items:center;
+  gap:3px; width:114px; min-width:114px; max-width:114px;
+  box-shadow:0 3px 8px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.2); position:relative;
+}
+.shelf::after { content:''; position:absolute; bottom:0; left:6px; right:6px; height:5px; background:linear-gradient(180deg,transparent,rgba(0,0,0,0.15)); border-radius:0 0 8px 8px; }
+.shelf-items-row { display:flex; gap:2px; justify-content:center; width:100%; min-height:34px; }
+.shelf-items-row .shelf-cell { width:34px; height:34px; flex-shrink:0; }
+.shelf-item { width:34px; height:34px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:20px; position:relative; }
+.shelf-item.front { background:rgba(255,255,255,0.92); box-shadow:0 1px 4px rgba(0,0,0,0.12); cursor:pointer; }
+.shelf-item.front:active { transform:scale(0.88); }
+.shelf-item.back { background:rgba(255,255,255,0.3); cursor:default; font-size:16px; opacity:0.4; filter:brightness(0.7); }
+
+#boosters {
+  display:flex; gap:10px; padding:10px 16px; padding-bottom:max(10px,env(safe-area-inset-bottom));
+  justify-content:center; background:linear-gradient(0deg,#4E342E,#5D4037); flex-shrink:0;
+}
+.booster-btn {
+  display:flex; align-items:center; gap:6px; padding:9px 16px; border-radius:22px; border:none;
+  background:linear-gradient(135deg,#FF8A65,#FF7043); color:white; font-size:13px; font-weight:600;
+  cursor:pointer; transition:transform .15s,opacity .2s; box-shadow:0 2px 10px rgba(255,112,67,0.35);
+}
+.booster-btn:active { transform:scale(0.94); }
+.booster-btn:disabled { opacity:0.45; pointer-events:none; }
+.booster-btn .booster-icon { font-size:18px; }
+.booster-btn .booster-cost { font-size:10px; background:rgba(0,0,0,0.2); border-radius:10px; padding:2px 6px; display:flex; align-items:center; gap:3px; }
+.booster-btn .gold-coin { width:10px; height:10px; border-radius:50%; border:1px solid #F57F17; flex-shrink:0; background:radial-gradient(circle at 35% 35%,#FFF176,#FFD700 40%,#F9A825 100%); }
+
+.flying-item { position:fixed; font-size:24px; z-index:100; pointer-events:none; transition:all .3s cubic-bezier(.2,.8,.2,1); }
+.music-note { position:absolute; font-size:14px; z-index:50; pointer-events:none; animation:floatNote 1.4s ease-out forwards; }
+@keyframes floatNote { 0%{opacity:1;transform:translateY(0) rotate(0)} 100%{opacity:0;transform:translateY(-35px) rotate(25deg) translateX(12px) scale(.6)} }
+#music-indicator { position:absolute; top:52px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,#AB47BC,#7B1FA2); color:white; padding:5px 14px; border-radius:16px; font-size:12px; font-weight:600; display:none; z-index:20; box-shadow:0 2px 8px rgba(171,71,188,0.4); white-space:nowrap; }
+#music-indicator.active { display:flex; align-items:center; gap:4px; animation:pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.7} }
+.coin-fly { position:fixed; font-size:18px; font-weight:700; color:var(--coin); z-index:100; pointer-events:none; text-shadow:0 1px 3px rgba(0,0,0,0.3); animation:coinUp .9s ease-out forwards; }
+@keyframes coinUp { 0%{opacity:1;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-50px) scale(1.2)} }
+
+/* Overlays */
+.overlay { position:absolute; inset:0; background:rgba(0,0,0,0.8); display:none; align-items:center; justify-content:center; z-index:200; flex-direction:column; gap:14px; backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); }
+.overlay.active { display:flex; }
+.overlay h2 { color:white; font-size:28px; text-align:center; }
+.overlay .sub { color:rgba(255,255,255,0.7); font-size:14px; text-align:center; line-height:1.5; }
+.overlay .highlight { color:var(--coin); font-size:22px; font-weight:700; }
+.overlay .stars { font-size:36px; letter-spacing:6px; }
+.overlay button { padding:14px 40px; border-radius:25px; border:none; background:linear-gradient(135deg,#FF8A65,var(--accent)); color:white; font-size:17px; font-weight:700; cursor:pointer; box-shadow:0 4px 14px rgba(255,112,67,0.4); margin-top:6px; }
+.overlay button:active { transform:scale(.95); }
+.overlay button.secondary { background:linear-gradient(135deg,#78909C,#546E7A); box-shadow:0 4px 14px rgba(84,110,122,0.4); padding:10px 28px; font-size:14px; }
+#level-start .level-num { font-size:60px; font-weight:800; color:white; text-shadow:0 4px 20px rgba(255,112,67,0.5); }
+#level-start .level-title { font-size:16px; color:rgba(255,255,255,0.6); text-transform:uppercase; letter-spacing:2px; }
+#level-complete .earned-row { display:flex; align-items:center; gap:8px; color:var(--coin); font-size:20px; font-weight:700; }
+
+/* Shop overlay */
+#shop-overlay { overflow-y:auto; padding:40px 16px; align-items:stretch; gap:12px; }
+#shop-overlay h2 { flex-shrink:0; margin-bottom:4px; }
+.shop-grid { display:flex; flex-direction:column; gap:10px; width:100%; max-width:360px; margin:0 auto; }
+.shop-card {
+  display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.1);
+  border-radius:16px; padding:12px 14px; cursor:pointer; border:2px solid transparent;
+  transition:border-color .2s, background .2s;
+}
+.shop-card.selected { border-color:var(--accent); background:rgba(255,112,67,0.15); }
+.shop-card.locked { opacity:0.7; }
+.shop-card-icon { font-size:36px; flex-shrink:0; width:48px; text-align:center; }
+.shop-card-info { flex:1; min-width:0; }
+.shop-card-name { color:white; font-size:16px; font-weight:700; }
+.shop-card-items { color:rgba(255,255,255,0.6); font-size:13px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.shop-card-btn {
+  padding:6px 14px; border-radius:14px; border:none; font-size:12px; font-weight:700;
+  cursor:pointer; flex-shrink:0; display:flex; align-items:center; gap:4px;
+}
+.shop-card-btn.owned { background:#66BB6A; color:white; }
+.shop-card-btn.buy { background:linear-gradient(135deg,#FFD700,#FFC107); color:#5D4037; }
+.shop-card-btn .gc { width:10px; height:10px; border-radius:50%; border:1px solid #F57F17; background:radial-gradient(circle at 35% 35%,#FFF176,#FFD700 40%,#F9A825 100%); flex-shrink:0; }
+#shop-close-btn { margin-top:8px; }
+
+/* Tutorial */
+#tutorial { overflow:hidden; padding:0; gap:0; }
+#tutorial .tut-slide {
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:12px; padding:32px 24px;
+  opacity:0; transform:translateX(60px); transition:opacity .35s ease, transform .35s ease;
+  pointer-events:none;
+}
+#tutorial .tut-slide.active { opacity:1; transform:translateX(0); pointer-events:auto; }
+#tutorial .tut-slide.left { transform:translateX(-60px); }
+.tut-icon { font-size:64px; line-height:1; margin-bottom:4px; }
+.tut-title { color:white; font-size:22px; font-weight:800; text-align:center; }
+.tut-desc { color:rgba(255,255,255,0.75); font-size:14px; text-align:center; line-height:1.6; max-width:320px; }
+.tut-example {
+  display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.1);
+  border-radius:14px; padding:10px 16px; margin-top:2px;
+}
+.tut-example-label { color:rgba(255,255,255,0.5); font-size:11px; }
+.tut-example-val { font-size:18px; }
+.tut-nav { display:flex; align-items:center; gap:16px; margin-top:8px; }
+.tut-dots { display:flex; gap:6px; }
+.tut-dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.25); transition:background .2s; }
+.tut-dot.active { background:white; }
+.tut-btn {
+  padding:12px 36px; border-radius:22px; border:none; font-size:16px; font-weight:700;
+  cursor:pointer; color:white; background:linear-gradient(135deg,#FF8A65,var(--accent));
+  box-shadow:0 4px 14px rgba(255,112,67,0.4);
+}
+.tut-btn:active { transform:scale(.95); }
+.tut-skip {
+  position:absolute; top:16px; right:18px; background:none; border:none;
+  color:rgba(255,255,255,0.45); font-size:13px; cursor:pointer; padding:6px 10px;
+  border-radius:10px; transition:color .2s;
+}
+.tut-skip:active { color:rgba(255,255,255,0.8); }
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="header">
+    <div id="level-info">
+      <span id="level-badge">Ур. 1</span>
+      <span id="served-counter">0 / 5</span>
+    </div>
+    <div id="coin-counter">
+      <span class="coin-big"></span>
+      <span id="coin-value">0</span>
+    </div>
+  </div>
+  <div id="visitors"></div>
+  <div id="music-indicator">🎵 Музыка!</div>
+  <div id="assembly-section">
+    <div id="assembly-label">Зона сборки</div>
+    <div id="assembly-area"></div>
+  </div>
+  <div id="shelves-section"></div>
+  <div id="boosters">
+    <button class="booster-btn" id="booster-music"><span class="booster-icon">🎵</span>Музыка<span class="booster-cost"><span class="gold-coin"></span> 1</span></button>
+    <button class="booster-btn" id="booster-collect"><span class="booster-icon">⚡</span>Сбор<span class="booster-cost"><span class="gold-coin"></span> 1</span></button>
+  </div>
+
+  <div id="tutorial" class="overlay active">
+    <button class="tut-skip" id="tut-skip">Пропустить</button>
+
+    <div class="tut-slide active" data-step="0">
+      <div class="tut-icon">👋</div>
+      <div class="tut-title">Добро пожаловать!</div>
+      <div class="tut-desc">Ты управляешь магазином. К тебе приходят посетители с заказами — собирай их как можно быстрее и зарабатывай монеты!</div>
+      <div class="tut-nav"><div class="tut-dots" id="tut-dots-0"></div><button class="tut-btn" id="tut-next-0">Далее</button></div>
+    </div>
+
+    <div class="tut-slide" data-step="1">
+      <div class="tut-icon">🧑‍🤝‍🧑</div>
+      <div class="tut-title">Посетители</div>
+      <div class="tut-desc">Наверху экрана стоят посетители. У каждого есть заказ — набор предметов, которые нужно собрать.</div>
+      <div class="tut-example">
+        <span class="tut-example-val">😊</span>
+        <span style="font-size:20px">→</span>
+        <span class="tut-example-val">🍔 🍟</span>
+      </div>
+      <div class="tut-nav"><div class="tut-dots" id="tut-dots-1"></div><button class="tut-btn" id="tut-next-1">Далее</button></div>
+    </div>
+
+    <div class="tut-slide" data-step="2">
+      <div class="tut-icon">💰</div>
+      <div class="tut-title">Оплата и чаевые</div>
+      <div class="tut-desc">У каждого посетителя два счётчика:</div>
+      <div class="tut-example">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:6px"><span class="gold-coin"></span><span style="color:white;font-size:13px;font-weight:600">Оплата</span><span style="color:rgba(255,255,255,0.5);font-size:12px">— фиксированная сумма</span></div>
+          <div style="display:flex;align-items:center;gap:6px"><span style="font-size:13px">💝</span><span style="color:white;font-size:13px;font-weight:600">Чаевые</span><span style="color:rgba(255,255,255,0.5);font-size:12px">— уменьшаются от ожидания</span></div>
+        </div>
+      </div>
+      <div class="tut-desc">Чем быстрее соберёшь заказ — тем больше чаевых получишь!</div>
+      <div class="tut-nav"><div class="tut-dots" id="tut-dots-2"></div><button class="tut-btn" id="tut-next-2">Далее</button></div>
+    </div>
+
+    <div class="tut-slide" data-step="3">
+      <div class="tut-icon">🗄️</div>
+      <div class="tut-title">Полки с предметами</div>
+      <div class="tut-desc">Внизу расположены полки. Нажми на предмет в первом ряду — он перелетит в зону сборки. Предметы за первым рядом затемнены и станут доступны, когда передние будут убраны.</div>
+      <div class="tut-example">
+        <div style="display:flex;gap:4px">
+          <span style="font-size:22px;background:rgba(255,255,255,0.9);border-radius:6px;padding:2px 4px">🍔</span>
+          <span style="font-size:18px;opacity:0.4;padding:2px 4px">🍟</span>
+        </div>
+        <span style="color:rgba(255,255,255,0.5);font-size:12px;margin-left:6px">← первый ряд активен</span>
+      </div>
+      <div class="tut-nav"><div class="tut-dots" id="tut-dots-3"></div><button class="tut-btn" id="tut-next-3">Далее</button></div>
+    </div>
+
+    <div class="tut-slide" data-step="4">
+      <div class="tut-icon">📦</div>
+      <div class="tut-title">Зона сборки</div>
+      <div class="tut-desc">Предметы с полок попадают сюда. Как только в зоне сборки окажутся все предметы из заказа посетителя — заказ выполнится автоматически. Если зона заполнена и заказы нельзя выполнить — игра окончена!</div>
+      <div class="tut-nav"><div class="tut-dots" id="tut-dots-4"></div><button class="tut-btn" id="tut-next-4">Далее</button></div>
+    </div>
+
+    <div class="tut-slide" data-step="5">
+      <div class="tut-icon">✨</div>
+      <div class="tut-title">Бустеры</div>
+      <div class="tut-desc">Внизу экрана — бустеры за 1 монету:</div>
+      <div class="tut-example">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:6px"><span style="font-size:18px">🎵</span><span style="color:white;font-size:13px;font-weight:600">Музыка</span><span style="color:rgba(255,255,255,0.5);font-size:12px">— 5 сек. чаевые не падают</span></div>
+          <div style="display:flex;align-items:center;gap:6px"><span style="font-size:18px">⚡</span><span style="color:white;font-size:13px;font-weight:600">Сбор</span><span style="color:rgba(255,255,255,0.5);font-size:12px">— мгновенно собирает заказ</span></div>
+        </div>
+      </div>
+      <div class="tut-nav"><div class="tut-dots" id="tut-dots-5"></div><button class="tut-btn" id="tut-next-5">Далее</button></div>
+    </div>
+
+    <div class="tut-slide" data-step="6">
+      <div class="tut-icon">🏪</div>
+      <div class="tut-title">Магазин</div>
+      <div class="tut-desc">Зарабатывай монеты и открывай новые магазины с разными темами предметов: цветы, сладости, одежда и другие!</div>
+      <div class="tut-nav"><div class="tut-dots" id="tut-dots-6"></div><button class="tut-btn" id="tut-next-6">Играть!</button></div>
+    </div>
+  </div>
+
+  <div id="level-start" class="overlay">
+    <div class="level-title">УРОВЕНЬ</div>
+    <div class="level-num" id="start-level-num">1</div>
+    <div class="sub" id="start-level-desc"></div>
+    <button id="start-btn">Начать</button>
+    <button id="shop-btn" class="secondary">🏪 Магазин</button>
+  </div>
+
+  <div id="level-complete" class="overlay">
+    <h2>🎉 Поздравляем!</h2>
+    <div class="sub" id="complete-msg"></div>
+    <div class="stars" id="complete-stars"></div>
+    <div class="earned-row"><span class="coin-big" style="width:20px;height:20px"></span> <span id="complete-coins">0</span></div>
+    <button id="next-btn">Следующий уровень</button>
+  </div>
+
+  <div id="game-over" class="overlay">
+    <h2>Игра окончена!</h2>
+    <div class="highlight"><span class="coin-big" style="width:20px;height:20px;display:inline-block;vertical-align:middle;margin-right:6px"></span><span id="final-coins">0</span></div>
+    <button id="retry-btn">Повторить</button>
+  </div>
+
+  <div id="shop-overlay" class="overlay">
+    <h2>🏪 Магазин</h2>
+    <div class="sub">Выбери тему предметов</div>
+    <div class="shop-grid" id="shop-grid"></div>
+    <button id="shop-close-btn" class="secondary">Назад</button>
+  </div>
+</div>
+
+<script>
+const SHOPS = [
+  {
+    id:'food', name:'Еда', icon:'🍔', cost:0,
+    items:[
+      {emoji:'🍔',id:'i0'},{emoji:'🍟',id:'i1'},{emoji:'🌭',id:'i2'},{emoji:'🍕',id:'i3'},
+      {emoji:'🌮',id:'i4'},{emoji:'🍩',id:'i5'},{emoji:'🧁',id:'i6'},{emoji:'🍦',id:'i7'},
+      {emoji:'🥤',id:'i8'},{emoji:'☕',id:'i9'},
+    ],
+  },
+  {
+    id:'flowers', name:'Цветы', icon:'🌹', cost:100,
+    items:[
+      {emoji:'🌹',id:'i0'},{emoji:'🌷',id:'i1'},{emoji:'🌸',id:'i2'},{emoji:'🌻',id:'i3'},
+      {emoji:'🌺',id:'i4'},{emoji:'💐',id:'i5'},{emoji:'🪻',id:'i6'},{emoji:'🌼',id:'i7'},
+      {emoji:'🏵️',id:'i8'},{emoji:'🪷',id:'i9'},
+    ],
+  },
+  {
+    id:'sweets', name:'Сладости', icon:'🍬', cost:200,
+    items:[
+      {emoji:'🍫',id:'i0'},{emoji:'🍬',id:'i1'},{emoji:'🍭',id:'i2'},{emoji:'🎂',id:'i3'},
+      {emoji:'🍰',id:'i4'},{emoji:'🍪',id:'i5'},{emoji:'🍡',id:'i6'},{emoji:'🍮',id:'i7'},
+      {emoji:'🧇',id:'i8'},{emoji:'🍯',id:'i9'},
+    ],
+  },
+  {
+    id:'clothes', name:'Одежда', icon:'👗', cost:300,
+    items:[
+      {emoji:'👕',id:'i0'},{emoji:'👗',id:'i1'},{emoji:'👔',id:'i2'},{emoji:'🧥',id:'i3'},
+      {emoji:'👒',id:'i4'},{emoji:'🧢',id:'i5'},{emoji:'👟',id:'i6'},{emoji:'👜',id:'i7'},
+      {emoji:'🧣',id:'i8'},{emoji:'🎀',id:'i9'},
+    ],
+  },
+  {
+    id:'tools', name:'Инструменты', icon:'🔧', cost:400,
+    items:[
+      {emoji:'🔨',id:'i0'},{emoji:'🔧',id:'i1'},{emoji:'🪛',id:'i2'},{emoji:'🪚',id:'i3'},
+      {emoji:'🔩',id:'i4'},{emoji:'⚙️',id:'i5'},{emoji:'📐',id:'i6'},{emoji:'📏',id:'i7'},
+      {emoji:'✂️',id:'i8'},{emoji:'🗜️',id:'i9'},
+    ],
+  },
+];
+
+const AVATARS = ['😊','😎','🤠','😺','🐸','🦊','🐵','🐰','🧔','👩','🧑','👴','👶','🤡','🥸','🤓'];
+
+const LEVELS = [
+  { totalVisitors:6, itemCount:4, orderMin:1, orderMax:1, coinsMin:2, coinsMax:3, tipsMin:2, tipsMax:3, decayMs:7000, startCoins:3, visible:3, freeSlots:6, musicMs:5000,
+    shelves:[{cols:2,cycling:false},{cols:2,cycling:false}] },
+  { totalVisitors:8, itemCount:5, orderMin:1, orderMax:2, coinsMin:2, coinsMax:4, tipsMin:2, tipsMax:3, decayMs:6000, startCoins:3, visible:4, freeSlots:6, musicMs:5000,
+    shelves:[{cols:3,cycling:false},{cols:3,cycling:false}] },
+  { totalVisitors:10, itemCount:6, orderMin:1, orderMax:2, coinsMin:3, coinsMax:4, tipsMin:2, tipsMax:4, decayMs:5500, startCoins:4, visible:4, freeSlots:6, musicMs:5000,
+    shelves:[{cols:3,cycling:false},{cols:4,cycling:true,speed:0.25}] },
+  { totalVisitors:12, itemCount:7, orderMin:1, orderMax:3, coinsMin:3, coinsMax:5, tipsMin:2, tipsMax:4, decayMs:5000, startCoins:4, visible:5, freeSlots:6, musicMs:5000,
+    shelves:[{cols:3,cycling:false},{cols:5,cycling:true,speed:0.3},{cols:3,cycling:false}] },
+  { totalVisitors:14, itemCount:8, orderMin:2, orderMax:3, coinsMin:3, coinsMax:5, tipsMin:3, tipsMax:5, decayMs:4500, startCoins:5, visible:5, freeSlots:6, musicMs:5000,
+    shelves:[{cols:3,cycling:false},{cols:5,cycling:true,speed:0.35},{cols:3,cycling:false}] },
+  { totalVisitors:16, itemCount:8, orderMin:2, orderMax:3, coinsMin:3, coinsMax:5, tipsMin:3, tipsMax:5, decayMs:4000, startCoins:5, visible:5, freeSlots:6, musicMs:5000,
+    shelves:[{cols:3,cycling:false},{cols:5,cycling:true,speed:0.4},{cols:3,cycling:false},{cols:4,cycling:true,speed:-0.25}] },
+  { totalVisitors:20, itemCount:9, orderMin:2, orderMax:4, coinsMin:4, coinsMax:6, tipsMin:3, tipsMax:5, decayMs:3500, startCoins:5, visible:5, freeSlots:6, musicMs:5000,
+    shelves:[{cols:3,cycling:false},{cols:6,cycling:true,speed:0.45},{cols:3,cycling:false},{cols:5,cycling:true,speed:-0.35}] },
+  { totalVisitors:25, itemCount:10, orderMin:2, orderMax:4, coinsMin:4, coinsMax:6, tipsMin:4, tipsMax:6, decayMs:3000, startCoins:6, visible:5, freeSlots:6, musicMs:5000,
+    shelves:[{cols:3,cycling:false},{cols:6,cycling:true,speed:0.5},{cols:3,cycling:false},{cols:5,cycling:true,speed:-0.4}] },
+];
+
+let LVL = LEVELS[0];
+let ITEMS = SHOPS[0].items.slice(0, LVL.itemCount);
+
+const S = {
+  coins:3, visitors:[], queue:[], assembly:[], paidSlot:false, rows:[],
+  musicOn:false, musicTmr:null, over:false, levelComplete:false,
+  vid:0, busy:false, offsets:[], level:0, served:0,
+  shopOwned:[true,false,false,false,false], shopSelected:0,
+};
+
+function rnd(a){return a[Math.floor(Math.random()*a.length)]}
+function rndItem(){return{...rnd(ITEMS)}}
+function rndRange(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}}
+
+function getShopItems(){return SHOPS[S.shopSelected].items}
+
+function makeVisitor(){
+  const n=rndRange(LVL.orderMin,LVL.orderMax);
+  const order=Array.from({length:n},rndItem);
+  const baseCoins=rndRange(LVL.coinsMin,LVL.coinsMax);
+  const tips=rndRange(LVL.tipsMin,LVL.tipsMax);
+  return{id:S.vid++,avatar:rnd(AVATARS),order,baseCoins,tips,maxTips:tips,fresh:true};
+}
+
+function generateLevel(){
+  S.queue=[];
+  for(let i=0;i<LVL.totalVisitors;i++) S.queue.push(makeVisitor());
+  const pool=[];
+  for(const v of S.queue) for(const item of v.order) pool.push({...item});
+  shuffle(pool);
+
+  const allSh=[];
+  S.rows=LVL.shelves.map(cfg=>{
+    const shelves=[];
+    for(let c=0;c<cfg.cols;c++){const sh={rows:[]};shelves.push(sh);allSh.push(sh)}
+    return{shelves,cycling:!!cfg.cycling,speed:cfg.speed||0};
+  });
+  S.offsets=LVL.shelves.map(()=>0);
+
+  const per=Math.ceil(pool.length/allSh.length);
+  let idx=0;
+  for(const sh of allSh){
+    const chunk=pool.slice(idx,idx+per); idx+=per;
+    let ci=0;
+    while(ci<chunk.length){const rs=Math.min(3,chunk.length-ci);sh.rows.push(chunk.slice(ci,ci+rs));ci+=rs}
+  }
+  S.visitors=S.queue.splice(0,LVL.visible);
+}
+
+function maxSlots(){return S.paidSlot?LVL.freeSlots+1:LVL.freeSlots}
+function canAdd(){return S.assembly.length<maxSlots()}
+
+function addFromRect(item,rect){
+  if(!canAdd()){warnFull();return false}
+  S.assembly.push(item);
+  renderAssembly();
+  const to=getSlotEl(S.assembly.length-1);
+  if(rect&&to){
+    flyFromRect(rect,to,item.emoji,()=>checkOrders());
+  } else checkOrders();
+  return true;
+}
+
+function getSlotEl(i){return document.querySelectorAll('#assembly-area .assembly-slot')[i]||null}
+
+function warnFull(){
+  document.querySelectorAll('#assembly-area .assembly-slot').forEach(el=>{
+    el.classList.add('full-warning');
+    setTimeout(()=>el.classList.remove('full-warning'),500);
+  });
+  checkGameOver();
+}
+
+function shelvesEmpty(){
+  for(const gr of S.rows) for(const sh of gr.shelves) if(sh.rows.length>0) return false;
+  return true;
+}
+function anyOrderReady(){for(const v of S.visitors) if(orderReady(v)) return true; return false}
+
+function checkOrders(){
+  if(S.levelComplete||S.over) return;
+  for(let i=0;i<S.visitors.length;i++){if(orderReady(S.visitors[i])){fulfillOrder(i);return}}
+  checkLevelDone();
+  checkGameOver();
+}
+
+function orderReady(v){
+  const pool=S.assembly.map(a=>a.id);
+  for(const item of v.order){const idx=pool.indexOf(item.id);if(idx===-1)return false;pool.splice(idx,1)}
+  return true;
+}
+
+function checkLevelDone(){
+  if(S.levelComplete||S.over) return;
+  if(S.queue.length===0&&S.visitors.length===0){S.levelComplete=true;setTimeout(showLevelComplete,500);return}
+  if(!shelvesEmpty()) return;
+  if(S.assembly.length>0&&anyOrderReady()) return;
+  S.levelComplete=true; setTimeout(showLevelComplete,500);
+}
+
+function fulfillOrder(vi){
+  const v=S.visitors[vi];
+  for(const item of v.order){const idx=S.assembly.findIndex(a=>a.id===item.id);if(idx!==-1)S.assembly.splice(idx,1)}
+  const earned=v.baseCoins+Math.max(v.tips,0); S.coins+=earned; S.served++;
+  const vEl=document.querySelectorAll('.visitor')[vi];
+  if(vEl){vEl.classList.add('leaving');showCoinFly(vEl,earned)}
+  renderHeader();
+  const allDone=S.queue.length===0&&S.visitors.length<=1;
+  if(allDone||(shelvesEmpty()&&S.assembly.length===0)){S.levelComplete=true;setTimeout(showLevelComplete,500);return}
+  setTimeout(()=>{
+    S.visitors.splice(vi,1);
+    if(S.queue.length>0){const nx=S.queue.shift();nx.fresh=true;S.visitors.push(nx)}
+    renderAll(); setTimeout(checkOrders,100);
+  },400);
+}
+
+function showCoinFly(el,amount){
+  if(amount<=0)return;
+  const r=el.getBoundingClientRect();
+  const d=document.createElement('div');d.className='coin-fly';d.textContent=`+${amount}`;
+  d.style.left=(r.left+r.width/2-25)+'px';d.style.top=r.top+'px';
+  document.body.appendChild(d);setTimeout(()=>d.remove(),1000);
+}
+
+function flyFromRect(rect,toEl,emoji,cb){
+  const tr=toEl.getBoundingClientRect();
+  const el=document.createElement('div');el.className='flying-item';el.textContent=emoji;
+  el.style.left=(rect.left+rect.width/2-12)+'px';
+  el.style.top=(rect.top+rect.height/2-12)+'px';
+  document.body.appendChild(el);
+  requestAnimationFrame(()=>{
+    el.style.left=(tr.left+tr.width/2-12)+'px';
+    el.style.top=(tr.top+tr.height/2-12)+'px';
+  });
+  setTimeout(()=>{el.remove();if(cb)cb()},330);
+}
+
+function checkGameOver(){
+  if(S.over||S.levelComplete)return;
+  if(shelvesEmpty()){checkLevelDone();return}
+  if(S.assembly.length<maxSlots())return;
+  for(const v of S.visitors) if(orderReady(v)) return;
+  S.over=true;
+  document.getElementById('final-coins').textContent=S.coins;
+  document.getElementById('game-over').classList.add('active');
+}
+
+function showLevelComplete(){
+  const pct=S.served/LVL.totalVisitors;
+  let stars='⭐'; if(pct>=0.7)stars='⭐⭐'; if(pct>=1)stars='⭐⭐⭐';
+  document.getElementById('complete-stars').textContent=stars;
+  document.getElementById('complete-coins').textContent=S.coins;
+  document.getElementById('complete-msg').textContent=
+    S.served>=LVL.totalVisitors?`Все ${S.served} посетителей обслужены!`:`Обслужено ${S.served} из ${LVL.totalVisitors}`;
+  const isLast=S.level>=LEVELS.length-1;
+  document.getElementById('next-btn').textContent=isLast?'Начать сначала':'Следующий уровень';
+  document.getElementById('level-complete').classList.add('active');
+}
+
+function nextLevel(){
+  document.getElementById('level-complete').classList.remove('active');
+  if(S.level<LEVELS.length-1) S.level++; else{S.level=0;S.coins=LEVELS[0].startCoins}
+  showLevelStart();
+}
+
+let decayInterval;
+function startDecay(){
+  clearInterval(decayInterval);
+  decayInterval=setInterval(()=>{
+    if(S.over||S.musicOn||S.levelComplete)return;
+    S.visitors.forEach(v=>{v.tips=Math.max(0,v.tips-1)});renderVisitors();
+  },LVL.decayMs);
+}
+
+function activateMusic(){
+  if(S.coins<1||S.musicOn||S.over||S.levelComplete)return;
+  S.coins-=1;S.musicOn=true;renderCoins();
+  document.getElementById('music-indicator').classList.add('active');spawnNotes();
+  clearTimeout(S.musicTmr);
+  S.musicTmr=setTimeout(()=>{S.musicOn=false;document.getElementById('music-indicator').classList.remove('active')},LVL.musicMs);
+}
+
+function spawnNotes(){
+  if(!S.musicOn||S.over)return;
+  document.querySelectorAll('.visitor-avatar').forEach(av=>{
+    const n=document.createElement('span');n.className='music-note';
+    n.textContent=Math.random()>0.5?'🎵':'🎶';n.style.left=(Math.random()*20-10)+'px';
+    av.appendChild(n);setTimeout(()=>n.remove(),1500);
+  });
+  if(S.musicOn)setTimeout(spawnNotes,550);
+}
+
+function activateAutoCollect(){
+  if(S.coins<1||S.over||S.levelComplete)return;
+  let bV=null,bN=null;
+  for(const v of S.visitors){const nd=getMissing(v);if(!nd||!nd.length)continue;if(allOnShelves(nd)){bV=v;bN=nd;break}}
+  if(!bV)return;
+  S.coins-=1;renderCoins();
+  for(const n of bN) removeFromShelf(n.id);
+  const rem=[...bV.order];
+  for(let i=rem.length-1;i>=0;i--){if(!bN.some(n=>n===rem[i])){const ai=S.assembly.findIndex(a=>a.id===rem[i].id);if(ai!==-1)S.assembly.splice(ai,1)}}
+  const earned=bV.baseCoins+Math.max(bV.tips,0);S.coins+=earned;S.served++;renderHeader();
+  const vi=S.visitors.indexOf(bV);
+  const vEl=document.querySelectorAll('.visitor')[vi];
+  if(vEl){vEl.classList.add('leaving');showCoinFly(vEl,earned)}
+  const allDone=S.queue.length===0&&S.visitors.length<=1;
+  if(allDone||(shelvesEmpty()&&S.assembly.length===0)){S.levelComplete=true;setTimeout(showLevelComplete,500);return}
+  setTimeout(()=>{
+    S.visitors.splice(vi,1);
+    if(S.queue.length>0){const nx=S.queue.shift();nx.fresh=true;S.visitors.push(nx)}
+    renderAll();checkLevelDone();
+  },400);
+}
+
+function getMissing(v){
+  const pool=S.assembly.map(a=>a.id);const needed=[];
+  for(const item of v.order){const idx=pool.indexOf(item.id);if(idx!==-1)pool.splice(idx,1);else needed.push(item)}
+  return needed;
+}
+function allOnShelves(needed){
+  const av={};
+  for(const gr of S.rows) for(const sh of gr.shelves) for(const sr of sh.rows) for(const it of sr) av[it.id]=(av[it.id]||0)+1;
+  const rq={};for(const n of needed) rq[n.id]=(rq[n.id]||0)+1;
+  for(const id in rq) if((av[id]||0)<rq[id]) return false;return true;
+}
+function removeFromShelf(itemId){
+  for(const gr of S.rows) for(const sh of gr.shelves) for(let r=0;r<sh.rows.length;r++){
+    const sr=sh.rows[r];
+    for(let i=0;i<sr.length;i++) if(sr[i].id===itemId){sr.splice(i,1);if(!sr.length)sh.rows.splice(r,1);return true}
+  }
+  return false;
+}
+
+/* Shelf tap — instant disappear, then fly */
+function handleShelfTap(ri,si,ii){
+  if(S.over||S.busy||S.levelComplete)return;
+  const gr=S.rows[ri]; if(!gr)return;
+  const sh=gr.shelves[si]; if(!sh||!sh.rows.length)return;
+  const fr=sh.rows[0]; if(!fr||ii>=fr.length)return;
+  const item=fr[ii];
+  if(!canAdd()){warnFull();return}
+
+  const el=document.querySelector(`.shelf-item.front[data-r="${ri}"][data-s="${si}"][data-i="${ii}"]`);
+  const savedRect=el?el.getBoundingClientRect():null;
+
+  fr.splice(ii,1);
+  if(!fr.length) sh.rows.shift();
+  renderShelves();
+  renderHeader();
+
+  addFromRect(item,savedRect);
+}
+
+/* Cycling */
+function tickCycling(){
+  if(!S.over&&!S.levelComplete){
+    S.rows.forEach((row,i)=>{
+      if(!row.cycling)return;
+      S.offsets[i]+=row.speed;
+      const sw=120,total=row.shelves.length*sw;
+      while(S.offsets[i]>0)S.offsets[i]-=total;
+      while(S.offsets[i]<-total)S.offsets[i]+=total;
+      const inner=document.querySelector(`#srow-${i} .shelf-row-inner`);
+      if(inner)inner.style.transform=`translateX(${S.offsets[i]}px)`;
+    });
+  }
+  requestAnimationFrame(tickCycling);
+}
+
+/* Render */
+function renderCoins(){
+  document.getElementById('coin-value').textContent=S.coins;
+  document.getElementById('booster-music').disabled=S.coins<1||S.musicOn;
+  document.getElementById('booster-collect').disabled=S.coins<1;
+}
+function renderHeader(){
+  document.getElementById('level-badge').textContent=`Ур. ${S.level+1}`;
+  document.getElementById('served-counter').textContent=`${S.served} / ${LVL.totalVisitors}`;
+  renderCoins();
+}
+function visitorBgColor(v){
+  const pct=v.maxTips>0?v.tips/v.maxTips:0;
+  return`hsl(${Math.round(pct*120)},${55+Math.round((1-pct)*20)}%,${82-Math.round((1-pct)*12)}%)`;
+}
+function tipsBgColor(v){
+  const pct=v.maxTips>0?v.tips/v.maxTips:0;
+  const r=Math.round(220-pct*120), g=Math.round(60+pct*140), b=Math.round(60+pct*20);
+  return`rgb(${r},${g},${b})`;
+}
+function renderVisitors(){
+  const c=document.getElementById('visitors');c.innerHTML='';
+  S.visitors.forEach(v=>{
+    const d=document.createElement('div');
+    d.className='visitor'+(v.fresh?' entering':'');
+    if(v.fresh)setTimeout(()=>{v.fresh=false},400);
+    d.style.backgroundColor=visitorBgColor(v);
+    d.innerHTML=`<div class="visitor-coins"><span class="gold-coin"></span>${v.baseCoins}</div>
+      <div class="visitor-tips" style="background:${tipsBgColor(v)}">💝${v.tips}</div>
+      <div class="visitor-avatar">${v.avatar}</div>
+      <div class="visitor-order">${v.order.map(it=>`<div class="visitor-order-item">${it.emoji}</div>`).join('')}</div>`;
+    c.appendChild(d);
+  });
+}
+function renderAssembly(){
+  const c=document.getElementById('assembly-area');c.innerHTML='';
+  for(let i=0;i<LVL.freeSlots;i++){
+    const sl=document.createElement('div');sl.className='assembly-slot';
+    if(S.assembly[i]){sl.classList.add('has-item');sl.textContent=S.assembly[i].emoji;
+      for(const v of S.visitors) if(v.order.some(o=>o.id===S.assembly[i].id)){sl.classList.add('match-glow');break}
+    }
+    c.appendChild(sl);
+  }
+  const ps=document.createElement('div');ps.className='assembly-slot paid';
+  if(!S.paidSlot){ps.classList.add('locked');ps.innerHTML=`<span class="lock-icon">🔒</span><span class="cost-badge"><span class="gold-coin"></span>1</span>`;ps.addEventListener('click',unlockSlot)}
+  else if(S.assembly[LVL.freeSlots]){ps.classList.add('has-item');ps.textContent=S.assembly[LVL.freeSlots].emoji}
+  c.appendChild(ps);
+}
+function unlockSlot(){if(S.coins<1||S.paidSlot)return;S.coins-=1;S.paidSlot=true;renderCoins();renderAssembly()}
+
+function renderShelves(){
+  const c=document.getElementById('shelves-section');c.innerHTML='';
+  S.rows.forEach((gr,ri)=>{
+    const rd=document.createElement('div');
+    rd.className='shelf-row'+(gr.cycling?' cycling':'');rd.id=`srow-${ri}`;
+    const inner=document.createElement('div');inner.className='shelf-row-inner';
+    const list=gr.cycling?[...gr.shelves,...gr.shelves]:gr.shelves;
+    list.forEach((sh,si)=>{
+      const rsi=si%gr.shelves.length;
+      const sd=document.createElement('div');sd.className='shelf';
+      sh.rows.forEach((sr,di)=>{
+        const rowDiv=document.createElement('div');rowDiv.className='shelf-items-row';
+        const isF=di===0;
+        for(let ci=0;ci<3;ci++){
+          const cell=document.createElement('div');cell.className='shelf-cell';
+          if(ci<sr.length){
+            const itemEl=document.createElement('div');
+            itemEl.className='shelf-item '+(isF?'front':'back');
+            itemEl.textContent=sr[ci].emoji;
+            itemEl.setAttribute('data-r',ri);itemEl.setAttribute('data-s',rsi);itemEl.setAttribute('data-i',ci);
+            if(isF) itemEl.addEventListener('click',()=>handleShelfTap(ri,rsi,ci));
+            cell.appendChild(itemEl);
+          }
+          rowDiv.appendChild(cell);
+        }
+        sd.appendChild(rowDiv);
+      });
+      inner.appendChild(sd);
+    });
+    rd.appendChild(inner);c.appendChild(rd);
+  });
+}
+
+function renderAll(){renderHeader();renderVisitors();renderAssembly();renderShelves()}
+
+/* Shop */
+function renderShop(){
+  const grid=document.getElementById('shop-grid');grid.innerHTML='';
+  SHOPS.forEach((shop,i)=>{
+    const card=document.createElement('div');
+    card.className='shop-card'+(i===S.shopSelected?' selected':'')+(S.shopOwned[i]?'':' locked');
+    const preview=shop.items.slice(0,5).map(x=>x.emoji).join(' ');
+    card.innerHTML=`
+      <div class="shop-card-icon">${shop.icon}</div>
+      <div class="shop-card-info"><div class="shop-card-name">${shop.name}</div><div class="shop-card-items">${preview}</div></div>
+      <button class="shop-card-btn ${S.shopOwned[i]?'owned':'buy'}">${
+        S.shopOwned[i]?(i===S.shopSelected?'✓ Выбран':'Выбрать')
+        :`<span class="gc"></span>${shop.cost}`
+      }</button>`;
+    card.querySelector('.shop-card-btn').addEventListener('click',(e)=>{
+      e.stopPropagation();
+      if(S.shopOwned[i]){S.shopSelected=i;ITEMS=getShopItems().slice(0,LVL.itemCount);renderShop()}
+      else if(S.coins>=shop.cost){S.coins-=shop.cost;S.shopOwned[i]=true;S.shopSelected=i;ITEMS=getShopItems().slice(0,LVL.itemCount);renderCoins();renderShop()}
+    });
+    grid.appendChild(card);
+  });
+}
+
+function openShop(){hideAllOverlays();renderShop();document.getElementById('shop-overlay').classList.add('active')}
+function closeShop(){document.getElementById('shop-overlay').classList.remove('active');showLevelStart()}
+
+/* Level start */
+function showLevelStart(){
+  hideAllOverlays();
+  LVL=LEVELS[S.level];
+  ITEMS=getShopItems().slice(0,LVL.itemCount);
+  document.getElementById('start-level-num').textContent=S.level+1;
+  const desc=[
+    `${LVL.totalVisitors} посетителей`,
+    `${LVL.itemCount} видов предметов`,
+    LVL.orderMin===LVL.orderMax?`Заказ: ${LVL.orderMin}`:`Заказ: ${LVL.orderMin}–${LVL.orderMax}`,
+  ];
+  document.getElementById('start-level-desc').innerHTML=desc.join('<br>');
+  document.getElementById('level-start').classList.add('active');
+}
+
+function startLevel(){
+  document.getElementById('level-start').classList.remove('active');
+  LVL=LEVELS[S.level]; ITEMS=getShopItems().slice(0,LVL.itemCount);
+  S.assembly=[];S.paidSlot=false;S.over=false;S.levelComplete=false;
+  S.musicOn=false;S.busy=false;S.vid=0;S.served=0;
+  if(S.level===0&&S.coins<LVL.startCoins) S.coins=LVL.startCoins;
+  generateLevel();renderAll();startDecay();
+  document.getElementById('music-indicator').classList.remove('active');
+}
+
+function hideAllOverlays(){document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('active'))}
+
+document.getElementById('booster-music').addEventListener('click',activateMusic);
+document.getElementById('booster-collect').addEventListener('click',activateAutoCollect);
+document.getElementById('start-btn').addEventListener('click',startLevel);
+document.getElementById('shop-btn').addEventListener('click',openShop);
+document.getElementById('shop-close-btn').addEventListener('click',closeShop);
+document.getElementById('next-btn').addEventListener('click',nextLevel);
+document.getElementById('retry-btn').addEventListener('click',()=>{hideAllOverlays();startLevel()});
+
+/* Tutorial */
+const TUT_STEPS = 7;
+let tutStep = 0;
+let tutSeen = false;
+
+function initTutDots() {
+  for (let s = 0; s < TUT_STEPS; s++) {
+    const container = document.getElementById(`tut-dots-${s}`);
+    if (!container) continue;
+    container.innerHTML = '';
+    for (let d = 0; d < TUT_STEPS; d++) {
+      const dot = document.createElement('div');
+      dot.className = 'tut-dot' + (d === s ? ' active' : '');
+      container.appendChild(dot);
+    }
+  }
+}
+
+function goTutStep(next) {
+  if (next >= TUT_STEPS) { closeTutorial(); return; }
+  const prev = document.querySelector(`.tut-slide[data-step="${tutStep}"]`);
+  const cur = document.querySelector(`.tut-slide[data-step="${next}"]`);
+  if (prev) { prev.classList.remove('active'); prev.classList.add('left'); }
+  if (cur) { cur.classList.remove('left'); cur.classList.add('active'); }
+  tutStep = next;
+}
+
+function closeTutorial() {
+  tutSeen = true;
+  document.getElementById('tutorial').classList.remove('active');
+  showLevelStart();
+}
+
+for (let i = 0; i < TUT_STEPS; i++) {
+  const btn = document.getElementById(`tut-next-${i}`);
+  if (btn) btn.addEventListener('click', () => goTutStep(i + 1));
+}
+document.getElementById('tut-skip').addEventListener('click', closeTutorial);
+initTutDots();
+
+requestAnimationFrame(tickCycling);
+</script>
+</body>
+</html>
